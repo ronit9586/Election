@@ -1,0 +1,4 @@
+ipfs add -r .
+ipfs name publish QmamKcKbLqE1wPdZezvqDqyyk6WSJxYGZsNh8WeccmUqqq(folder hash)
+
+https://gateway.ipfs.io/ipns/k51qzi5uqu5dgt7y53fvwmedt84nvhto7mwngpemtuldavk4k1qnh9i88ifyk0/

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+        integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <title>Document</title>
+</head>
+
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                Candidates
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-8">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Sr. No.</th>
+                                    <th>Name</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-4">
+                        <div class="row" style="margin: 16px;">
+                            <div class="card" style="width: 100%;">
+                                <div class="card-header">
+                                    Add Candidate
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="x">Candidate Name</h5>
+                                    <p class="card-text"><input class="form-control" type="text" name="candidateName" />
+                                    </p>
+                                    <button class="btn btn-primary" type="button" id="addCan">Add Candidate</button>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row" style="margin: 16px;">
+                            <div class="card" style="width: 100%;">
+                                <div class="card-header">
+                                    Give Vote.
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="x">Acccount TO</h5>
+                                    <p class="card-text">
+                                        <select id="candidate_sel" class="form-control">
+                                        </select>
+                                    </p>
+                                    <button class="btn btn-primary" type="button" id="giveVote">Give Vote</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.4.0-rc.0/web3.min.js"
+    integrity="sha512-wA6oif8rzHr3eWfNLx0pVf0fIng/3+rH0kWbxmMrsa0HZd1fXcGdFWAUIRvlgRo93wlwfNuqNEHt3rFYnjIeFw=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
+    integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<script src="./js/electioncontract.js"></script>
+<script>
+    let electioncontract;
+    let accounts = [];
+    $(document).ready(async () => {
+        if (typeof web3 !== 'undefined') {
+            // Use Mist/MetaMask's provider
+            ethereum.request({ method: 'eth_requestAccounts' });
+            web3js = new Web3(window.ethereum);
+        } else {
+
+        }
+        electioncontract = new web3js.eth.Contract(electionabi, electionAddress);
+        accounts = await ethereum.request({ method: 'eth_accounts' });
+        console.log(accounts);
+        startApp();
+    });
+
+    let makeTr = (i, res) => {
+        let html = "";
+        html += '<tr>';
+        html += `<td>${i + 1}</td>`;
+        html += `<td>${res.name}</td>`;
+        html += `<td>${res.cnt}</td>`;
+        html += '</tr>';
+        return { html: html, selectHtml: `<option value=${i}>${res.name}</option>` };
+    }
+    let map = new Map();
+
+    let startApp = async () => {
+        let res = await electioncontract.methods.getCandidate().call();
+        let html = "";
+        let selectHtml = "";
+        let i;
+        for (i = 0; i < res.length; i++) {
+            let value = makeTr(i, res[i]);
+            selectHtml += value.selectHtml;
+            html += value.html;
+        }
+        electioncontract.events.CandidateAdd((err, res) => {
+            console.log(res);
+            if (!err && !map.has(res.transactionIndex)) {
+                let obj = res.returnValues;
+                let value = makeTr(i, { cnt: 0, name: obj._candidate });
+                selectHtml += value.selectHtml;
+                map.set(res.transactionIndex);
+                $("tbody").html($("tbody").html()+value.html);
+                $("#candidate_sel").html(selectHtml);
+                i++;
+            }
+        });
+
+        electioncontract.events.Voted((err, res) => {
+            if (!err) {
+                console.log(res.returnValues);
+                let index = res.returnValues.id;
+                let voteCount = res.returnValues.voteCount;
+                
+                $($($($($('tbody')).find('tr')[index])).find('td')[2]).html(voteCount);
+            }
+        });
+        $("tbody").html(html);
+        $("#candidate_sel").html(selectHtml);
+    }
+
+
+    $("#giveVote").on('click', async () => {
+        let value = $("#candidate_sel")[0].value;
+        await electioncontract.methods.vote(value).send({ from: accounts[0] });
+        // startApp();
+    });
+
+    $("#addCan").on('click', async () => {
+        let name = $("input[name='candidateName']")[0].value;
+
+        let res = await electioncontract.methods.addCandidate(name).send({ from: accounts[0] });
+        // startApp();
+    });
+
+
+</script>
+
+</html>
